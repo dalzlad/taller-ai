@@ -29,7 +29,17 @@ class AISafety:
         r"\b(confirmed|confirmada|confirmado|definitive|definitivo|definitiva|diagnosis confirmed|falla confirmada)\b",
         re.IGNORECASE,
     )
-    _disassembled_warning_pattern = re.compile(r"desarmad", re.IGNORECASE)
+
+    # Signals used to detect that the provider already expressed, in its own words, the same
+    # idea as REPAIR_STATE_LIMITATION / DISASSEMBLED_ENGINE_WARNING — so the auto-appended
+    # safety net is skipped instead of duplicating a message the model already produced.
+    _repair_context_pattern = re.compile(r"desarmad|reparaci[oó]n", re.IGNORECASE)
+    _no_evidence_pattern = re.compile(
+        r"no\s+(?:\w+\s+){0,3}(?:us|utiliz)\w*\s+como\s+evidencia", re.IGNORECASE
+    )
+    _no_start_or_handle_pattern = re.compile(
+        r"no\s+(?:\w+\s+){0,3}(?:encend|arranqu|arranc|manipul)", re.IGNORECASE
+    )
 
     @classmethod
     def validate(cls, analysis: PreliminaryDiagnosticAnalysis) -> PreliminaryDiagnosticAnalysis:
@@ -48,8 +58,21 @@ class AISafety:
         if MANDATORY_LIMITATION not in analysis.limitations:
             analysis.limitations.append(MANDATORY_LIMITATION)
         if analysis.vehicle_state == VehicleState.EN_REPARACION:
-            if REPAIR_STATE_LIMITATION not in analysis.limitations:
+            if not any(cls._states_repair_evidence_exclusion(limitation) for limitation in analysis.limitations):
                 analysis.limitations.append(REPAIR_STATE_LIMITATION)
-            if not any(cls._disassembled_warning_pattern.search(warning) for warning in analysis.safety_warnings):
+            if not any(cls._warns_against_starting_disassembled_engine(warning) for warning in analysis.safety_warnings):
                 analysis.safety_warnings.append(DISASSEMBLED_ENGINE_WARNING)
         return analysis
+
+    @classmethod
+    def _states_repair_evidence_exclusion(cls, text: str) -> bool:
+        """True if `text` already says, in any wording, that repair/disassembly evidence was not
+        used as proof of the reported symptom's cause — the same claim REPAIR_STATE_LIMITATION
+        makes."""
+        return bool(cls._repair_context_pattern.search(text) and cls._no_evidence_pattern.search(text))
+
+    @classmethod
+    def _warns_against_starting_disassembled_engine(cls, text: str) -> bool:
+        """True if `text` already warns against starting/handling a disassembled engine, the same
+        claim DISASSEMBLED_ENGINE_WARNING makes."""
+        return bool(cls._repair_context_pattern.search(text) and cls._no_start_or_handle_pattern.search(text))

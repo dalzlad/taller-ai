@@ -189,6 +189,30 @@ def test_ai_safety_flags_repair_state_limitation_and_warning_when_missing() -> N
     assert DISASSEMBLED_ENGINE_WARNING in validated.safety_warnings
 
 
+def test_ai_safety_does_not_duplicate_repair_limitation_when_provider_paraphrased_it() -> None:
+    """Regression test for a real Gemini output that stated the same idea as
+    REPAIR_STATE_LIMITATION in different words; AISafety must recognize the paraphrase instead
+    of appending a second, redundant limitation."""
+    provider_limitation = (
+        "El vehículo está en un taller y las imágenes muestran el motor desarmado, por lo que "
+        "estas imágenes no pueden usarse como evidencia directa de la causa del síntoma "
+        "auditivo, ya que el motor no está en su estado operativo normal."
+    )
+    analysis = PreliminaryDiagnosticAnalysis(
+        summary="Motor desarmado en taller; se reporta un ruido en el audio.",
+        vehicle_state="en_reparacion",
+        possible_causes=[],
+        recommended_tests=[],
+        safety_warnings=[],
+        limitations=[provider_limitation],
+    )
+
+    validated = AISafety.validate(analysis)
+
+    assert validated.limitations == [provider_limitation, MANDATORY_LIMITATION]
+    assert REPAIR_STATE_LIMITATION not in validated.limitations
+
+
 def test_ai_safety_does_not_duplicate_repair_warning_already_present() -> None:
     analysis = PreliminaryDiagnosticAnalysis(
         summary="Motor desarmado en taller.",
