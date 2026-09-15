@@ -1,7 +1,7 @@
 from enum import Enum
 from typing import Any
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class VehicleState(str, Enum):
@@ -22,6 +22,8 @@ class CauseBasis(str, Enum):
 
 
 class PossibleCause(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     cause: str = Field(min_length=1, max_length=500)
     confidence: float = Field(ge=0.0, le=1.0)
     reasoning: str = Field(min_length=1, max_length=5_000)
@@ -32,12 +34,16 @@ class AnalysisObservations(BaseModel):
     """Findings kept separate by evidence channel, so an audio-only or image-only finding is
     never presented as if it were corroborated by the other channel."""
 
+    model_config = ConfigDict(extra="forbid")
+
     audio: list[str] = Field(default_factory=list)
     image: list[str] = Field(default_factory=list)
 
 
 class PreliminaryDiagnosticAnalysis(BaseModel):
     """Non-confirmatory AI-assisted diagnostic output."""
+
+    model_config = ConfigDict(extra="forbid")
 
     summary: str = Field(min_length=1, max_length=5_000)
     vehicle_state: VehicleState = VehicleState.INDETERMINADO
