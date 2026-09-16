@@ -1,6 +1,5 @@
 from datetime import datetime
 from decimal import Decimal
-from typing import Optional
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
@@ -10,8 +9,8 @@ from app.models.enums import WorkOrderStatus
 class WorkOrderCreate(BaseModel):
     diagnostic_id: int = Field(gt=0)
     description: str = Field(min_length=1, max_length=10_000)
-    estimated_cost: Optional[Decimal] = Field(default=None, ge=0, max_digits=12, decimal_places=2)
-    final_cost: Optional[Decimal] = Field(default=None, ge=0, max_digits=12, decimal_places=2)
+    estimated_cost: Decimal | None = Field(default=None, ge=0, max_digits=12, decimal_places=2)
+    final_cost: Decimal | None = Field(default=None, ge=0, max_digits=12, decimal_places=2)
 
     @model_validator(mode="after")
     def final_cost_requires_estimate(self) -> "WorkOrderCreate":

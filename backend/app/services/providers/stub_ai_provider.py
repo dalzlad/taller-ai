@@ -1,5 +1,9 @@
 from app.models.enums import DiagnosticEvidenceType
-from app.schemas.ai_analysis import AnalysisObservations, PreliminaryDiagnosticAnalysis, VehicleState
+from app.schemas.ai_analysis import (
+    AnalysisObservations,
+    PreliminaryDiagnosticAnalysis,
+    VehicleState,
+)
 from app.schemas.diagnostic_context import DiagnosticContext
 
 

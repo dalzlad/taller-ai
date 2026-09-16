@@ -1,5 +1,4 @@
 from datetime import datetime
-from typing import Optional
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
@@ -10,7 +9,7 @@ from app.schemas.ai_analysis import PreliminaryDiagnosticAnalysis
 class DiagnosticCreate(BaseModel):
     vehicle_id: int = Field(gt=0)
     reported_symptoms: str = Field(min_length=3, max_length=10_000)
-    mechanic_notes: Optional[str] = Field(default=None, max_length=10_000)
+    mechanic_notes: str | None = Field(default=None, max_length=10_000)
 
 
 class DiagnosticRead(DiagnosticCreate):
@@ -18,7 +17,7 @@ class DiagnosticRead(DiagnosticCreate):
 
     id: int
     status: DiagnosticStatus
-    ai_analysis: Optional[PreliminaryDiagnosticAnalysis] = None
+    ai_analysis: PreliminaryDiagnosticAnalysis | None = None
     created_at: datetime
     updated_at: datetime
 
@@ -26,7 +25,7 @@ class DiagnosticRead(DiagnosticCreate):
 class DiagnosticMediaCreate(BaseModel):
     type: MediaType
     file_url: str = Field(min_length=1, max_length=2048)
-    description: Optional[str] = Field(default=None, max_length=10_000)
+    description: str | None = Field(default=None, max_length=10_000)
 
     @field_validator("file_url")
     @classmethod
@@ -49,8 +48,8 @@ class DiagnosticFindingCreate(BaseModel):
     component: str = Field(min_length=1, max_length=120)
     finding: str = Field(min_length=1, max_length=10_000)
     severity: str = Field(min_length=1, max_length=30)
-    confidence: Optional[int] = Field(default=None, ge=0, le=100)
-    recommendation: Optional[str] = Field(default=None, max_length=10_000)
+    confidence: int | None = Field(default=None, ge=0, le=100)
+    recommendation: str | None = Field(default=None, max_length=10_000)
 
 
 class DiagnosticFindingRead(DiagnosticFindingCreate):

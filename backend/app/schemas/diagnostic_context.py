@@ -1,4 +1,4 @@
-from typing import Any, Optional
+from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -10,16 +10,16 @@ class DiagnosticVehicleContext(BaseModel):
     brand: str
     model: str
     year: int
-    engine: Optional[str] = None
+    engine: str | None = None
     mileage: int
     plate: str
-    vin: Optional[str] = None
+    vin: str | None = None
 
 
 class DiagnosticDetailsContext(BaseModel):
     id: int
     reported_symptoms: str
-    mechanic_notes: Optional[str] = None
+    mechanic_notes: str | None = None
     status: DiagnosticStatus
 
 
@@ -30,7 +30,7 @@ class DiagnosticEvidenceContext(BaseModel):
     file_name: str
     mime_type: str
     file_reference: str
-    description: Optional[str] = None
+    description: str | None = None
 
 
 class DiagnosticContext(BaseModel):

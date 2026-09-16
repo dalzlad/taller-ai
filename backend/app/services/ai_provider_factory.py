@@ -1,5 +1,5 @@
-from app.services.ai_provider import AIProvider
 from app.core.config import settings
+from app.services.ai_provider import AIProvider
 from app.services.providers.gemini_ai_provider import GeminiAIProvider
 from app.services.providers.openai_ai_provider import OpenAIAIProvider
 from app.services.providers.stub_ai_provider import StubAIProvider

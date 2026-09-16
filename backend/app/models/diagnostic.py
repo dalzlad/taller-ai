@@ -1,11 +1,18 @@
 from datetime import datetime
-from typing import Optional
+from typing import TYPE_CHECKING
 
-from sqlalchemy import JSON, DateTime, Enum, ForeignKey, String, Text, func
+from sqlalchemy import JSON, DateTime, Enum, ForeignKey, Text, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
 from app.models.enums import DiagnosticStatus
+
+if TYPE_CHECKING:
+    from app.models.diagnostic_evidence import DiagnosticEvidence
+    from app.models.diagnostic_finding import DiagnosticFinding
+    from app.models.diagnostic_media import DiagnosticMedia
+    from app.models.vehicle import Vehicle
+    from app.models.work_order import WorkOrder
 
 
 class Diagnostic(Base):
@@ -14,8 +21,8 @@ class Diagnostic(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     vehicle_id: Mapped[int] = mapped_column(ForeignKey("vehicles.id", ondelete="CASCADE"), index=True)
     reported_symptoms: Mapped[str] = mapped_column(Text, nullable=False)
-    mechanic_notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
-    ai_analysis: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
+    mechanic_notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    ai_analysis: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     status: Mapped[DiagnosticStatus] = mapped_column(
         Enum(DiagnosticStatus, name="diagnostic_status"), default=DiagnosticStatus.CREATED, nullable=False
     )

@@ -1,5 +1,4 @@
 from datetime import datetime
-from typing import Optional
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
@@ -7,11 +6,11 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 class VehicleCreate(BaseModel):
     customer_id: int = Field(gt=0)
     plate: str = Field(min_length=3, max_length=15)
-    vin: Optional[str] = Field(default=None, min_length=17, max_length=17)
+    vin: str | None = Field(default=None, min_length=17, max_length=17)
     brand: str = Field(min_length=1, max_length=80)
     model: str = Field(min_length=1, max_length=100)
     year: int = Field(ge=1886, le=2100)
-    engine: Optional[str] = Field(default=None, max_length=100)
+    engine: str | None = Field(default=None, max_length=100)
     mileage: int = Field(ge=0)
 
     @field_validator("plate", "vin", mode="before")

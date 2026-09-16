@@ -1,4 +1,5 @@
 from pathlib import Path
+from typing import ClassVar
 from uuid import uuid4
 
 from fastapi import HTTPException, UploadFile, status
@@ -11,7 +12,7 @@ from app.services.storage_service import StorageService
 
 
 class DiagnosticEvidenceService:
-    _ALLOWED: dict[str, tuple[DiagnosticEvidenceType, set[str], int]] = {
+    _ALLOWED: ClassVar[dict[str, tuple[DiagnosticEvidenceType, set[str], int]]] = {
         ".jpg": (DiagnosticEvidenceType.IMAGE, {"image/jpeg"}, 10 * 1024 * 1024),
         ".jpeg": (DiagnosticEvidenceType.IMAGE, {"image/jpeg"}, 10 * 1024 * 1024),
         ".png": (DiagnosticEvidenceType.IMAGE, {"image/png"}, 10 * 1024 * 1024),
@@ -80,7 +81,7 @@ class DiagnosticEvidenceService:
             return "image/png"
         if content.startswith(b"RIFF") and content[8:12] == b"WEBP":
             return "image/webp"
-        if content.startswith(b"ID3") or content.startswith(b"\xff\xfb") or content.startswith(b"\xff\xf3"):
+        if content.startswith((b"ID3", b"\xff\xfb", b"\xff\xf3")):
             return "audio/mpeg"
         if content.startswith(b"RIFF") and content[8:12] == b"WAVE":
             return "audio/wav"

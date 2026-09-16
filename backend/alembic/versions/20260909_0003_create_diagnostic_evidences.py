@@ -5,16 +5,17 @@ Revises: 20260908_0002
 Create Date: 2026-09-09
 """
 
-from typing import Sequence, Union
+from collections.abc import Sequence
 
 import sqlalchemy as sa
-from alembic import op
 from sqlalchemy.dialects import postgresql
 
+from alembic import op
+
 revision: str = "20260909_0003"
-down_revision: Union[str, None] = "20260908_0002"
-branch_labels: Union[str, Sequence[str], None] = None
-depends_on: Union[str, Sequence[str], None] = None
+down_revision: str | None = "20260908_0002"
+branch_labels: str | Sequence[str] | None = None
+depends_on: str | Sequence[str] | None = None
 
 diagnostic_evidence_type = postgresql.ENUM(
     "IMAGE", "AUDIO", "VIDEO", name="diagnostic_evidence_type", create_type=False

@@ -1,16 +1,11 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
-from app.db.session import get_db
-from app.api.dependencies import get_diagnostic_agent
 from app.agents.diagnostic_agent import DiagnosticAgent, DiagnosticNotFoundError
-from app.services.ai_safety import UnsafeAIResultError
-from app.services.providers.gemini_ai_provider import (
-    GeminiProviderConfigurationError,
-    GeminiProviderResponseError,
-)
-from app.services.providers.openai_ai_provider import OpenAIProviderNotEnabledError
+from app.api.dependencies import get_diagnostic_agent
+from app.db.session import get_db
 from app.repositories.domain import DomainRepository
+from app.schemas.ai_analysis import PreliminaryDiagnosticAnalysis
 from app.schemas.diagnostic import (
     DiagnosticCreate,
     DiagnosticFindingCreate,
@@ -19,8 +14,13 @@ from app.schemas.diagnostic import (
     DiagnosticMediaRead,
     DiagnosticRead,
 )
-from app.schemas.ai_analysis import PreliminaryDiagnosticAnalysis
+from app.services.ai_safety import UnsafeAIResultError
 from app.services.domain import DomainService
+from app.services.providers.gemini_ai_provider import (
+    GeminiProviderConfigurationError,
+    GeminiProviderResponseError,
+)
+from app.services.providers.openai_ai_provider import OpenAIProviderNotEnabledError
 
 router = APIRouter(prefix="/diagnostics", tags=["diagnostics"])
 repository = DomainRepository()

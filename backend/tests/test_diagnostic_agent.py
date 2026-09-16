@@ -13,14 +13,14 @@ from app.main import app
 from app.models import Customer, Diagnostic, DiagnosticEvidence, DiagnosticMedia, Vehicle
 from app.models.enums import DiagnosticEvidenceType, DiagnosticStatus, MediaType
 from app.schemas.ai_analysis import PreliminaryDiagnosticAnalysis
+from app.services.ai_provider_factory import AIProviderConfigurationError, AIProviderFactory
 from app.services.ai_safety import (
-    AISafety,
     DISASSEMBLED_ENGINE_WARNING,
     MANDATORY_LIMITATION,
     REPAIR_STATE_LIMITATION,
+    AISafety,
     UnsafeAIResultError,
 )
-from app.services.ai_provider_factory import AIProviderConfigurationError, AIProviderFactory
 from app.services.providers.stub_ai_provider import StubAIProvider
 
 

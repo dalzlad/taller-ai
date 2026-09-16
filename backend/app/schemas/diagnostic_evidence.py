@@ -1,5 +1,4 @@
 from datetime import datetime
-from typing import Optional
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -9,7 +8,7 @@ from app.models.enums import DiagnosticEvidenceType
 class DiagnosticEvidenceCreate(BaseModel):
     """Metadata parsed from the multipart request after the file is validated."""
 
-    description: Optional[str] = Field(default=None, max_length=10_000)
+    description: str | None = Field(default=None, max_length=10_000)
 
 
 class DiagnosticEvidenceRead(BaseModel):
@@ -21,5 +20,5 @@ class DiagnosticEvidenceRead(BaseModel):
     file_name: str
     mime_type: str
     file_size: int
-    description: Optional[str]
+    description: str | None
     created_at: datetime

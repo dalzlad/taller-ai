@@ -12,7 +12,7 @@ from app.schemas.diagnostic_context import (
 )
 from app.services.ai_provider import AIProvider
 from app.services.ai_provider_factory import AIProviderFactory
-from app.services.ai_safety import AISafety, MANDATORY_LIMITATION, UnsafeAIResultError
+from app.services.ai_safety import MANDATORY_LIMITATION, AISafety, UnsafeAIResultError
 from app.services.providers.gemini_ai_provider import (
     GeminiAIProvider,
     GeminiProviderConfigurationError,

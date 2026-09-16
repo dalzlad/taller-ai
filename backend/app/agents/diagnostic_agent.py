@@ -4,7 +4,7 @@ from collections.abc import Callable
 from sqlalchemy.orm import Session, sessionmaker
 
 from app.models import Diagnostic
-from app.models.enums import DiagnosticEvidenceType, DiagnosticStatus, MediaType
+from app.models.enums import DiagnosticEvidenceType, MediaType
 from app.schemas.ai_analysis import PreliminaryDiagnosticAnalysis
 from app.schemas.diagnostic_context import (
     DiagnosticContext,
