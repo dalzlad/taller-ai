@@ -6,6 +6,12 @@ import 'package:http/http.dart' as http;
 /// physical device or a deployed environment.
 const String backendBaseUrl = 'http://localhost:8000';
 
+const Duration _requestTimeout = Duration(seconds: 10);
+
+/// HTTP client used by [getJsonList] and [postJson]. Tests replace it with a
+/// `MockClient` from `package:http/testing.dart`.
+http.Client apiHttpClient = http.Client();
+
 /// Raised when the backend responds with a non-2xx status or the request
 /// could not be completed at all. [message] is always derived from the
 /// backend's real response body (or the raw transport error) so it can be
@@ -21,26 +27,45 @@ class ApiException implements Exception {
       statusCode != null ? 'Error HTTP $statusCode: $message' : message;
 }
 
+/// GET returning a JSON array of objects. [query] values are sent as URL
+/// query parameters (e.g. `{'q': 'ana'}` → `?q=ana`).
+Future<List<Map<String, dynamic>>> getJsonList(
+  String path, {
+  Map<String, String>? query,
+}) async {
+  final uri = Uri.parse('$backendBaseUrl$path').replace(queryParameters: query);
+  final body = await _send(uri, () => apiHttpClient.get(uri));
+  return (jsonDecode(body) as List).cast<Map<String, dynamic>>();
+}
+
 Future<Map<String, dynamic>> postJson(
   String path,
   Map<String, dynamic> body,
 ) async {
   final uri = Uri.parse('$backendBaseUrl$path');
+  final responseBody = await _send(
+    uri,
+    () => apiHttpClient.post(
+      uri,
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode(body),
+    ),
+  );
+  return jsonDecode(responseBody) as Map<String, dynamic>;
+}
+
+/// Runs [request] and returns the body of a 2xx response; anything else is
+/// turned into an [ApiException] with a readable message.
+Future<String> _send(Uri uri, Future<http.Response> Function() request) async {
   final http.Response response;
   try {
-    response = await http
-        .post(
-          uri,
-          headers: {'Content-Type': 'application/json'},
-          body: jsonEncode(body),
-        )
-        .timeout(const Duration(seconds: 10));
+    response = await request().timeout(_requestTimeout);
   } catch (error) {
     throw ApiException(null, 'No se pudo conectar a $uri:\n$error');
   }
 
   if (response.statusCode >= 200 && response.statusCode < 300) {
-    return jsonDecode(response.body) as Map<String, dynamic>;
+    return response.body;
   }
   throw ApiException(response.statusCode, _formatErrorBody(response.body));
 }
