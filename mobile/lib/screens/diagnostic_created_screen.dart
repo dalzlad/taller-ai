@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import 'diagnostic_analysis_screen.dart';
+import 'diagnostic_evidences_screen.dart';
 
 class DiagnosticCreatedScreen extends StatelessWidget {
   const DiagnosticCreatedScreen({
@@ -36,12 +36,12 @@ class DiagnosticCreatedScreen extends StatelessWidget {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (_) => DiagnosticAnalysisScreen(diagnosticId: diagnosticId),
+                      builder: (_) => DiagnosticEvidencesScreen(diagnosticId: diagnosticId),
                     ),
                   );
                 },
-                icon: const Icon(Icons.auto_awesome),
-                label: const Text('Analizar con IA'),
+                icon: const Icon(Icons.attach_file),
+                label: const Text('Continuar a evidencias'),
               ),
               const SizedBox(height: 8),
               OutlinedButton(
