@@ -4,9 +4,19 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
 from sqlalchemy.pool import StaticPool
 
+from app.core.config import settings
 from app.db.base import Base
 from app.db.session import get_db
 from app.main import app
+
+
+@pytest.fixture(autouse=True)
+def isolate_ai_settings(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Tests never use the AI provider or credentials from the local .env: every test starts
+    on the offline stub, and tests that need another provider configure it explicitly."""
+    monkeypatch.setattr(settings, "ai_provider", "stub")
+    for name in ("gemini_api_key", "gemini_model", "openai_api_key", "openai_model"):
+        monkeypatch.setattr(settings, name, None)
 
 
 @pytest.fixture()
