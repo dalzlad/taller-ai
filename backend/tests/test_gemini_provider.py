@@ -1,6 +1,7 @@
 import json
 from pathlib import Path
 
+import httpx
 import pytest
 
 from app.models.enums import DiagnosticEvidenceType, DiagnosticStatus
@@ -89,8 +90,8 @@ class _FakeClient:
         self._status_code = status_code
         self.calls: list[dict] = []
 
-    def post(self, url: str, params: dict, json: dict):
-        self.calls.append({"url": url, "params": params, "json": json})
+    def post(self, url: str, headers: dict, json: dict):
+        self.calls.append({"url": url, "headers": headers, "json": json})
         return _FakeResponse(self._body, self._status_code)
 
     def close(self) -> None:
@@ -121,7 +122,7 @@ def test_gemini_provider_calls_api_and_parses_analysis_without_network() -> None
     assert result.possible_causes[0].cause == "Bujía en mal estado"
     # No real network call is made; only the fake client recorded the request.
     assert len(fake_client.calls) == 1
-    assert fake_client.calls[0]["params"] == {"key": "test-key"}
+    assert fake_client.calls[0]["headers"] == {"x-goog-api-key": "test-key"}
     assert "gemini-1.5-flash:generateContent" in fake_client.calls[0]["url"]
     # AISafety must still apply to Gemini's output like any other provider.
     validated = AISafety.validate(result)
@@ -370,3 +371,96 @@ def test_providers_expose_name_and_model_for_persisted_metadata() -> None:
     assert (gemini.name, gemini.model) == ("gemini", "gemini-1.5-flash")
     assert (openai.name, openai.model) == ("openai", "gpt-x")
     assert all(isinstance(p, AIProvider) for p in (stub, gemini, openai))
+
+
+# --- La API key nunca viaja en la URL ni aparece en errores ------------------------------------
+
+_SECRET_KEY = "secret-gemini-key-123"
+
+
+def test_gemini_api_key_travels_in_header_not_in_url() -> None:
+    requests: list = []
+
+    def handler(request):
+        requests.append(request)
+        return httpx.Response(200, json=_gemini_success_body(_fake_analysis_payload()))
+
+    client = httpx.Client(transport=httpx.MockTransport(handler))
+    GeminiAIProvider(api_key=_SECRET_KEY, model="gemini-1.5-flash", client=client).analyze(_context())
+
+    sent_url = str(requests[0].url)
+    assert "key=" not in sent_url
+    assert _SECRET_KEY not in sent_url
+    assert requests[0].url.query == b""
+    assert requests[0].headers["x-goog-api-key"] == _SECRET_KEY
+
+
+class _RaisingClient:
+    """Fails like httpx would, with the secret embedded in the exception text."""
+
+    def __init__(self, error: Exception) -> None:
+        self._error = error
+
+    def post(self, url: str, headers: dict, json: dict):
+        raise self._error
+
+    def close(self) -> None:
+        pass
+
+
+def _leaky_errors() -> list[Exception]:
+    leaky_url = f"https://generativelanguage.googleapis.com/v1beta/models/m:generateContent?key={_SECRET_KEY}"
+    request = httpx.Request("POST", leaky_url)
+    status_error = httpx.HTTPStatusError(
+        f"Client error '400 Bad Request' for url '{leaky_url}'",
+        request=request,
+        response=httpx.Response(400, request=request),
+    )
+    transport_error = httpx.ConnectError(f"connection failed for {leaky_url}", request=request)
+    return [status_error, transport_error]
+
+
+@pytest.mark.parametrize("error", _leaky_errors(), ids=["http_status", "transport"])
+def test_gemini_errors_never_expose_api_key_or_url(error: Exception) -> None:
+    provider = GeminiAIProvider(api_key=_SECRET_KEY, model="m", client=_RaisingClient(error))  # type: ignore[arg-type]
+
+    with pytest.raises(GeminiProviderResponseError) as exc_info:
+        provider.analyze(_context())
+
+    message = str(exc_info.value)
+    assert _SECRET_KEY not in message
+    assert "key=" not in message
+    assert "https://" not in message
+    assert message.startswith("Gemini API request failed")
+
+
+def test_gemini_http_status_error_reports_only_the_status_code() -> None:
+    provider = GeminiAIProvider(api_key=_SECRET_KEY, model="m", client=_RaisingClient(_leaky_errors()[0]))  # type: ignore[arg-type]
+
+    with pytest.raises(GeminiProviderResponseError, match=r"^Gemini API request failed with HTTP 400\.$"):
+        provider.analyze(_context())
+
+
+def test_analyze_endpoint_502_detail_does_not_expose_api_key(client) -> None:
+    from app.api.dependencies import get_ai_provider
+    from app.main import app
+
+    provider = GeminiAIProvider(api_key=_SECRET_KEY, model="m", client=_RaisingClient(_leaky_errors()[0]))  # type: ignore[arg-type]
+    app.dependency_overrides[get_ai_provider] = lambda: provider
+    customer = client.post(
+        "/customers", json={"name": "Ana Ruiz", "phone": "+57 300 000 0000", "email": "ana@example.com"}
+    ).json()
+    vehicle = client.post(
+        "/vehicles",
+        json={"customer_id": customer["id"], "plate": "KEY123", "brand": "Kia", "model": "Rio", "year": 2020, "mileage": 1},
+    ).json()
+    diagnostic_id = client.post(
+        "/diagnostics", json={"vehicle_id": vehicle["id"], "reported_symptoms": "Ruido al arrancar"}
+    ).json()["id"]
+
+    response = client.post(f"/diagnostics/{diagnostic_id}/analyze")
+
+    assert response.status_code == 502
+    assert response.json() == {"detail": "Gemini API request failed with HTTP 400."}
+    assert _SECRET_KEY not in response.text
+    assert "key=" not in response.text

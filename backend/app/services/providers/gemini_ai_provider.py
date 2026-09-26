@@ -279,11 +279,19 @@ class GeminiAIProvider:
         client = self._client or httpx.Client(timeout=self.timeout_seconds)
         owns_client = self._client is None
         try:
-            response = client.post(url, params={"key": self.api_key}, json=payload)
+            # The key travels in a header, never in the URL, so it cannot leak through
+            # URLs echoed in httpx errors, logs or proxies.
+            response = client.post(url, headers={"x-goog-api-key": self.api_key}, json=payload)
             response.raise_for_status()
             return response.json()
+        except httpx.HTTPStatusError as exc:
+            # The message reaches API clients as the 502 detail, so it never includes
+            # str(exc), which embeds the request URL.
+            raise GeminiProviderResponseError(
+                f"Gemini API request failed with HTTP {exc.response.status_code}."
+            ) from exc
         except httpx.HTTPError as exc:
-            raise GeminiProviderResponseError(f"Gemini API request failed: {exc}") from exc
+            raise GeminiProviderResponseError(f"Gemini API request failed ({type(exc).__name__}).") from exc
         finally:
             if owns_client:
                 client.close()
