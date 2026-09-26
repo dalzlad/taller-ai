@@ -152,18 +152,22 @@ class GeminiAIProvider:
     and stable enough that a thin HTTP client is simpler to maintain.
     """
 
+    name = "gemini"
+
     def __init__(
         self,
         api_key: str | None = None,
         model: str | None = None,
         storage_service: StorageService | None = None,
         client: httpx.Client | None = None,
+        timeout_seconds: float = DEFAULT_TIMEOUT_SECONDS,
     ) -> None:
         # No fallback to settings here, by design: only AIProviderFactory resolves defaults
         # from the environment, so constructing this class directly (e.g. in tests) never
         # silently picks up real ambient credentials.
         self.api_key = api_key
         self.model = model
+        self.timeout_seconds = timeout_seconds
         self._storage_service = storage_service or StorageService()
         self._client = client
 
@@ -272,7 +276,7 @@ class GeminiAIProvider:
 
     def _call_gemini(self, payload: dict[str, Any]) -> dict[str, Any]:
         url = f"{GEMINI_API_BASE_URL}/models/{self.model}:generateContent"
-        client = self._client or httpx.Client(timeout=DEFAULT_TIMEOUT_SECONDS)
+        client = self._client or httpx.Client(timeout=self.timeout_seconds)
         owns_client = self._client is None
         try:
             response = client.post(url, params={"key": self.api_key}, json=payload)

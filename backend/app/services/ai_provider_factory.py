@@ -29,6 +29,7 @@ class AIProviderFactory:
             return GeminiAIProvider(
                 api_key=settings.gemini_api_key if api_key is None else api_key,
                 model=settings.gemini_model if model is None else model,
+                timeout_seconds=settings.gemini_timeout_seconds,
             )
         raise AIProviderConfigurationError(
             f"AI provider '{provider_name}' is not implemented. Supported providers: stub, openai, gemini."

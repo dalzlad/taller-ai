@@ -23,6 +23,7 @@ class Settings(BaseSettings):
     openai_model: str | None = None
     gemini_api_key: str | None = None
     gemini_model: str | None = None
+    gemini_timeout_seconds: float = Field(default=30.0, gt=0, le=300)
     vision_api_key: str | None = None
     transcription_api_key: str | None = None
     knowledge_api_key: str | None = None

@@ -1,7 +1,15 @@
 from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
-from app.models import Customer, Diagnostic, DiagnosticFinding, DiagnosticMedia, Vehicle, WorkOrder
+from app.models import (
+    Customer,
+    Diagnostic,
+    DiagnosticAIAnalysis,
+    DiagnosticFinding,
+    DiagnosticMedia,
+    Vehicle,
+    WorkOrder,
+)
 
 LIKE_ESCAPE = "\\"
 DEFAULT_SEARCH_LIMIT = 20
@@ -73,6 +81,10 @@ class DomainRepository:
 
     def list_diagnostics(self, db: Session) -> list[Diagnostic]:
         return list(db.scalars(select(Diagnostic).order_by(Diagnostic.id.desc())))
+
+    def get_ai_analysis(self, db: Session, diagnostic_id: int) -> DiagnosticAIAnalysis | None:
+        statement = select(DiagnosticAIAnalysis).where(DiagnosticAIAnalysis.diagnostic_id == diagnostic_id)
+        return db.scalars(statement).one_or_none()
 
     def list_media(self, db: Session, diagnostic_id: int) -> list[DiagnosticMedia]:
         statement = select(DiagnosticMedia).where(DiagnosticMedia.diagnostic_id == diagnostic_id)

@@ -1,8 +1,8 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
-from app.agents.diagnostic_agent import DiagnosticAgent, DiagnosticNotFoundError
-from app.api.dependencies import get_diagnostic_agent
+from app.agents.diagnostic_agent import DiagnosticNotFoundError
+from app.api.dependencies import get_diagnostic_analysis_service
 from app.db.session import get_db
 from app.repositories.domain import DomainRepository
 from app.schemas.ai_analysis import PreliminaryDiagnosticAnalysis
@@ -14,7 +14,13 @@ from app.schemas.diagnostic import (
     DiagnosticMediaRead,
     DiagnosticRead,
 )
+from app.schemas.diagnostic_ai_analysis import DiagnosticAIAnalysisRead
 from app.services.ai_safety import UnsafeAIResultError
+from app.services.diagnostic_analysis import (
+    AIAnalysisNotFoundError,
+    DiagnosticAnalysisService,
+    get_persisted_analysis,
+)
 from app.services.domain import DomainService
 from app.services.providers.gemini_ai_provider import (
     GeminiProviderConfigurationError,
@@ -46,11 +52,16 @@ def list_diagnostics(db: Session = Depends(get_db)) -> list[DiagnosticRead]:
 
 @router.post("/{diagnostic_id}/analyze", response_model=PreliminaryDiagnosticAnalysis)
 def analyze_diagnostic(
-    diagnostic_id: int, agent: DiagnosticAgent = Depends(get_diagnostic_agent)
+    diagnostic_id: int,
+    db: Session = Depends(get_db),
+    service: DiagnosticAnalysisService = Depends(get_diagnostic_analysis_service),
 ) -> PreliminaryDiagnosticAnalysis:
-    """Request a preliminary assessment; no AI result is treated as a confirmed fault."""
+    """Request a preliminary assessment; no AI result is treated as a confirmed fault.
+
+    The first successful analysis is persisted (and moves the diagnostic from CREATED to
+    REVIEW); later calls return it without calling the AI provider again."""
     try:
-        return agent.analyze(diagnostic_id)
+        return service.analyze(db, diagnostic_id)
     except DiagnosticNotFoundError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Diagnostic not found") from exc
     except UnsafeAIResultError as exc:
@@ -61,6 +72,17 @@ def analyze_diagnostic(
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(exc)) from exc
     except GeminiProviderResponseError as exc:
         raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(exc)) from exc
+
+
+@router.get("/{diagnostic_id}/analysis", response_model=DiagnosticAIAnalysisRead)
+def get_diagnostic_analysis(diagnostic_id: int, db: Session = Depends(get_db)) -> DiagnosticAIAnalysisRead:
+    """Persisted analysis with its provider metadata; never calls the AI provider."""
+    try:
+        return get_persisted_analysis(db, diagnostic_id, repository)
+    except DiagnosticNotFoundError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Diagnostic not found") from exc
+    except AIAnalysisNotFoundError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="AI analysis not found") from exc
 
 
 @router.get("/{diagnostic_id}", response_model=DiagnosticRead)

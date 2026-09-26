@@ -125,12 +125,22 @@ def test_analyze_endpoint_delegates_to_agent(client: TestClient) -> None:
     agent = Mock()
     agent.analyze.return_value = expected
     app.dependency_overrides[get_diagnostic_agent] = lambda: agent
+    customer = client.post(
+        "/customers", json={"name": "Ana Ruiz", "phone": "+57 300 000 0000", "email": "ana@example.com"}
+    ).json()
+    vehicle = client.post(
+        "/vehicles",
+        json={"customer_id": customer["id"], "plate": "DEL123", "brand": "Kia", "model": "Rio", "year": 2020, "mileage": 1},
+    ).json()
+    diagnostic_id = client.post(
+        "/diagnostics", json={"vehicle_id": vehicle["id"], "reported_symptoms": "Ruido al frenar"}
+    ).json()["id"]
 
-    response = client.post("/diagnostics/42/analyze")
+    response = client.post(f"/diagnostics/{diagnostic_id}/analyze")
 
     assert response.status_code == 200
     assert response.json()["summary"] == "Preliminary review only."
-    agent.analyze.assert_called_once_with(42)
+    agent.analyze.assert_called_once_with(diagnostic_id)
     app.dependency_overrides.pop(get_diagnostic_agent)
 
 

@@ -3,6 +3,11 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
 
+# Version of the PreliminaryDiagnosticAnalysis contract stored in diagnostic_ai_analyses.result.
+# Bump it whenever the contract changes incompatibly: stored analyses with an older version are
+# then treated as missing and regenerated instead of breaking reads.
+ANALYSIS_SCHEMA_VERSION = 1
+
 
 class VehicleState(str, Enum):
     """Whether the evidence indicates the vehicle is running normally, already under repair, or

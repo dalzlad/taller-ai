@@ -8,6 +8,7 @@ from app.db.base import Base
 from app.models.enums import DiagnosticStatus
 
 if TYPE_CHECKING:
+    from app.models.diagnostic_ai_analysis import DiagnosticAIAnalysis
     from app.models.diagnostic_evidence import DiagnosticEvidence
     from app.models.diagnostic_finding import DiagnosticFinding
     from app.models.diagnostic_media import DiagnosticMedia
@@ -42,3 +43,6 @@ class Diagnostic(Base):
         back_populates="diagnostic", cascade="all, delete-orphan"
     )
     work_orders: Mapped[list["WorkOrder"]] = relationship(back_populates="diagnostic")
+    analysis: Mapped["DiagnosticAIAnalysis | None"] = relationship(
+        back_populates="diagnostic", uselist=False, cascade="all, delete-orphan"
+    )
