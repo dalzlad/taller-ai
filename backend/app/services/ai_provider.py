@@ -8,4 +8,8 @@ from app.schemas.diagnostic_context import DiagnosticContext
 class AIProvider(Protocol):
     """Provider-neutral contract for a multimodal preliminary diagnostic analysis."""
 
+    # Recorded with every persisted analysis, e.g. name="gemini", model="gemini-1.5-flash".
+    name: str
+    model: str | None
+
     def analyze(self, context: DiagnosticContext) -> PreliminaryDiagnosticAnalysis: ...

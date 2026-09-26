@@ -312,3 +312,61 @@ def test_no_hardcoded_api_key_in_provider_or_factory_source() -> None:
     assert "settings." not in provider_source
     assert "settings.gemini_api_key" in factory_source
     assert "settings.gemini_model" in factory_source
+
+
+# --- Timeout configurable (GEMINI_TIMEOUT_SECONDS) --------------------------------------------
+
+
+def test_gemini_provider_uses_its_configured_timeout_for_the_http_client(monkeypatch: pytest.MonkeyPatch) -> None:
+    created: list[float] = []
+
+    def fake_httpx_client(timeout: float) -> _FakeClient:
+        created.append(timeout)
+        return _FakeClient(_gemini_success_body(_fake_analysis_payload()))
+
+    monkeypatch.setattr("app.services.providers.gemini_ai_provider.httpx.Client", fake_httpx_client)
+
+    GeminiAIProvider(api_key="k", model="m", timeout_seconds=12.5).analyze(_context())
+
+    assert created == [12.5]
+
+
+def test_gemini_provider_timeout_defaults_to_30_seconds() -> None:
+    assert GeminiAIProvider(api_key="k", model="m").timeout_seconds == 30.0
+
+
+def test_factory_passes_gemini_timeout_from_settings(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr("app.services.ai_provider_factory.settings.gemini_timeout_seconds", 45.0)
+
+    provider = AIProviderFactory.create("gemini", api_key="k", model="m")
+
+    assert isinstance(provider, GeminiAIProvider)
+    assert provider.timeout_seconds == 45.0
+
+
+def test_gemini_timeout_setting_default_and_validation() -> None:
+    from pydantic import ValidationError
+
+    from app.core.config import Settings
+
+    assert Settings.model_fields["gemini_timeout_seconds"].default == 30.0
+    for invalid in (0, -1, 301):
+        with pytest.raises(ValidationError):
+            Settings(_env_file=None, gemini_timeout_seconds=invalid)
+
+
+# --- Metadatos del proveedor (se guardan con cada análisis) ------------------------------------
+
+
+def test_providers_expose_name_and_model_for_persisted_metadata() -> None:
+    from app.services.providers.openai_ai_provider import OpenAIAIProvider
+    from app.services.providers.stub_ai_provider import StubAIProvider
+
+    stub = StubAIProvider()
+    gemini = GeminiAIProvider(api_key="k", model="gemini-1.5-flash")
+    openai = OpenAIAIProvider(model="gpt-x")
+
+    assert (stub.name, stub.model) == ("stub", None)
+    assert (gemini.name, gemini.model) == ("gemini", "gemini-1.5-flash")
+    assert (openai.name, openai.model) == ("openai", "gpt-x")
+    assert all(isinstance(p, AIProvider) for p in (stub, gemini, openai))

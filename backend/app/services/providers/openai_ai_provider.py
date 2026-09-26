@@ -10,6 +10,8 @@ class OpenAIProviderNotEnabledError(RuntimeError):
 class OpenAIAIProvider:
     """OpenAI adapter boundary; intentionally performs no network operation in this stage."""
 
+    name = "openai"
+
     def __init__(
         self,
         api_key: str | None = None,

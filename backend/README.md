@@ -75,8 +75,19 @@ a fault as confirmed or definitive and ensures the limitation "La evaluación es
 confirmación física por un mecánico." is present. When the analysis reports `vehicle_state:
 "en_reparacion"`, `AISafety` also guarantees the limitation explaining that a disassembled-engine
 photo was not used as evidence of the audio symptom's cause, and a safety warning against starting or
-handling that engine, even if the provider's own output omitted them. Analyses are generated and
-returned only; this stage does not persist a new analysis history.
+handling that engine, even if the provider's own output omitted them.
+
+### Persisted analysis
+
+The first successful analysis of a diagnostic is stored in `diagnostic_ai_analyses` (at most one row
+per diagnostic) together with the provider name (`stub`, `gemini`, ...), its model and the analysis
+contract version, and the diagnostic moves from `CREATED` to `REVIEW`. Later `POST .../analyze` calls
+return the stored analysis with the same response shape, without calling the provider again. A stored
+analysis whose contract version or content no longer validates is regenerated. Failed analyses (422,
+502, 503) persist nothing. `GET /diagnostics/{id}/analysis` returns the stored analysis with its
+metadata and never calls the provider (404 if there is none). There is no analysis history yet.
+
+`GEMINI_TIMEOUT_SECONDS` (default `30`, maximum `300`) sets the timeout of the Gemini HTTP call.
 
 ### Analysis output shape
 

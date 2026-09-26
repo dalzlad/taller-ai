@@ -10,6 +10,9 @@ from app.schemas.diagnostic_context import DiagnosticContext
 class StubAIProvider:
     """Offline deterministic provider used until a real adapter is explicitly implemented."""
 
+    name = "stub"
+    model: str | None = None
+
     def analyze(self, context: DiagnosticContext) -> PreliminaryDiagnosticAnalysis:
         image_observations = [
             f"Evidencia disponible para revisión: {evidence.file_name} (imagen)."

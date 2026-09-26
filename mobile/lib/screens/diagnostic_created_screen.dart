@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import 'diagnostic_analysis_screen.dart';
+
 class DiagnosticCreatedScreen extends StatelessWidget {
   const DiagnosticCreatedScreen({
     super.key,
@@ -29,7 +31,20 @@ class DiagnosticCreatedScreen extends StatelessWidget {
               const SizedBox(height: 8),
               Text('Estado: $status'),
               const SizedBox(height: 24),
-              ElevatedButton(
+              ElevatedButton.icon(
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => DiagnosticAnalysisScreen(diagnosticId: diagnosticId),
+                    ),
+                  );
+                },
+                icon: const Icon(Icons.auto_awesome),
+                label: const Text('Analizar con IA'),
+              ),
+              const SizedBox(height: 8),
+              OutlinedButton(
                 onPressed: () =>
                     Navigator.popUntil(context, (route) => route.isFirst),
                 child: const Text('Volver al inicio'),

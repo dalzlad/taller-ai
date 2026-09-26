@@ -24,7 +24,7 @@ class DiagnosticNotFoundError(Exception):
 class DiagnosticAgent(ABC):
     @abstractmethod
     def analyze(self, diagnostic_id: int) -> PreliminaryDiagnosticAnalysis:
-        """Produce and persist a preliminary, non-confirmatory assessment."""
+        """Produce a preliminary, non-confirmatory assessment (persistence is the caller's job)."""
 
 
 class PreliminaryDiagnosticAgent(DiagnosticAgent):
