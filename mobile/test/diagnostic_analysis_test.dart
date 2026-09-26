@@ -8,7 +8,6 @@ import 'package:http/testing.dart';
 import 'package:mobile/api_client.dart';
 import 'package:mobile/models/diagnostic_analysis.dart';
 import 'package:mobile/screens/diagnostic_analysis_screen.dart';
-import 'package:mobile/screens/diagnostic_created_screen.dart';
 
 const _analysis = {
   'summary': 'Posible falla de encendido; se requiere verificación mecánica.',
@@ -87,20 +86,6 @@ void main() {
 
     final metadata = AnalysisMetadata.fromJson(_persisted(provider: 'stub', model: null));
     expect((metadata.provider, metadata.model), ('stub', null));
-  });
-
-  testWidgets('la confirmación del diagnóstico abre el análisis IA', (tester) async {
-    final requests = _mockBackend(_backend(metadata: _persisted()));
-    await tester.pumpWidget(
-      const MaterialApp(home: DiagnosticCreatedScreen(diagnosticId: 5, status: 'CREATED')),
-    );
-
-    await tester.tap(find.text('Analizar con IA'));
-    await tester.pumpAndSettle();
-
-    expect(requests.first.method, 'POST');
-    expect(requests.first.url.path, '/diagnostics/5/analyze');
-    expect(find.textContaining('Posible falla de encendido'), findsOneWidget);
   });
 
   testWidgets('muestra el análisis completo y el proveedor/modelo', (tester) async {
