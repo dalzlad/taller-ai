@@ -10,6 +10,10 @@ from app.models.enums import DiagnosticEvidenceType
 from app.repositories.diagnostic_evidence import DiagnosticEvidenceRepository
 from app.services.storage_service import StorageService
 
+EVIDENCES_LOCKED_DETAIL = (
+    "No se pueden modificar las evidencias porque el diagnóstico ya tiene un análisis de IA."
+)
+
 
 class DiagnosticEvidenceService:
     _ALLOWED: ClassVar[dict[str, tuple[DiagnosticEvidenceType, set[str], int]]] = {
@@ -36,8 +40,10 @@ class DiagnosticEvidenceService:
     def create(
         self, db: Session, diagnostic_id: int, upload: UploadFile, description: str | None
     ) -> DiagnosticEvidence:
-        if not db.get(Diagnostic, diagnostic_id):
+        diagnostic = db.get(Diagnostic, diagnostic_id)
+        if not diagnostic:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Diagnostic not found")
+        self._ensure_evidences_editable(diagnostic)
         original_name = Path(upload.filename or "").name
         extension = Path(original_name).suffix.lower()
         allowed = self._ALLOWED.get(extension)
@@ -96,7 +102,15 @@ class DiagnosticEvidenceService:
             return "video/mp4"
         return None
 
+    @staticmethod
+    def _ensure_evidences_editable(diagnostic: Diagnostic) -> None:
+        """The persisted AI analysis was generated from the current evidences and is never
+        regenerated, so they are frozen once it exists."""
+        if diagnostic.analysis is not None:
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=EVIDENCES_LOCKED_DETAIL)
+
     def delete(self, db: Session, evidence: DiagnosticEvidence) -> None:
+        self._ensure_evidences_editable(evidence.diagnostic)
         # A missing file is intentionally harmless: the database record still must be removable.
         self.storage.delete_file(evidence.file_path)
         db.delete(evidence)

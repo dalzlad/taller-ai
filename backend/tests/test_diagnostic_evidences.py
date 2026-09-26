@@ -1,5 +1,6 @@
 from pathlib import Path
 
+import pytest
 from fastapi.testclient import TestClient
 
 from app.api.routes.evidences import evidence_service
@@ -100,3 +101,90 @@ def test_delete_evidence_with_missing_file_still_deletes_record(client: TestClie
         assert client.get(f"/evidences/{evidence_id}").status_code == 404
     finally:
         evidence_service.storage = original_storage
+
+
+# --- Evidencias bloqueadas una vez existe un análisis de IA persistido -------------------------
+
+LOCKED_DETAIL = "No se pueden modificar las evidencias porque el diagnóstico ya tiene un análisis de IA."
+
+
+@pytest.fixture()
+def storage_root(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
+    monkeypatch.setattr(evidence_service, "storage", StorageService(tmp_path))
+    return tmp_path
+
+
+def _stored_files(root: Path, diagnostic_id: int) -> list[Path]:
+    folder = root / "diagnostics" / str(diagnostic_id)
+    return sorted(folder.iterdir()) if folder.exists() else []
+
+
+def _analyze(client: TestClient, diagnostic_id: int) -> dict:
+    response = client.post(f"/diagnostics/{diagnostic_id}/analyze")
+    assert response.status_code == 200
+    return client.get(f"/diagnostics/{diagnostic_id}/analysis").json()
+
+
+def test_evidences_can_be_uploaded_and_deleted_while_there_is_no_analysis(
+    client: TestClient, storage_root: Path
+) -> None:
+    diagnostic_id = _create_diagnostic(client)
+
+    uploaded = _upload(client, diagnostic_id, "motor.jpg", "image/jpeg")
+    assert uploaded.status_code == 201
+    assert len(_stored_files(storage_root, diagnostic_id)) == 1
+
+    assert client.delete(f"/evidences/{uploaded.json()['id']}").status_code == 204
+    assert _stored_files(storage_root, diagnostic_id) == []
+    assert client.get(f"/diagnostics/{diagnostic_id}/evidences").json() == []
+
+
+def test_upload_is_rejected_with_409_once_analysis_exists_and_stores_nothing(
+    client: TestClient, storage_root: Path
+) -> None:
+    diagnostic_id = _create_diagnostic(client)
+    existing = _upload(client, diagnostic_id, "motor.jpg", "image/jpeg").json()
+    analysis = _analyze(client, diagnostic_id)
+    files_before = _stored_files(storage_root, diagnostic_id)
+
+    response = _upload(client, diagnostic_id, "ruido.mp3", "audio/mpeg")
+
+    assert response.status_code == 409
+    assert response.json() == {"detail": LOCKED_DETAIL}
+    # Neither a physical file nor a database record is created.
+    assert _stored_files(storage_root, diagnostic_id) == files_before
+    assert [e["id"] for e in client.get(f"/diagnostics/{diagnostic_id}/evidences").json()] == [existing["id"]]
+    # The persisted analysis is untouched and still served as-is.
+    assert client.get(f"/diagnostics/{diagnostic_id}/analysis").json() == analysis
+
+
+def test_delete_is_rejected_with_409_once_analysis_exists_and_keeps_file_and_record(
+    client: TestClient, storage_root: Path
+) -> None:
+    diagnostic_id = _create_diagnostic(client)
+    evidence = _upload(client, diagnostic_id, "motor.jpg", "image/jpeg").json()
+    [stored_file] = _stored_files(storage_root, diagnostic_id)
+    analysis = _analyze(client, diagnostic_id)
+
+    response = client.delete(f"/evidences/{evidence['id']}")
+
+    assert response.status_code == 409
+    assert response.json() == {"detail": LOCKED_DETAIL}
+    assert stored_file.exists()
+    assert client.get(f"/evidences/{evidence['id']}").json() == evidence
+    downloaded = client.get(f"/evidences/{evidence['id']}/file")
+    assert downloaded.status_code == 200
+    assert downloaded.content == _content_for("image/jpeg")
+    assert client.get(f"/diagnostics/{diagnostic_id}/analysis").json() == analysis
+
+
+def test_evidence_lock_is_per_diagnostic(client: TestClient, storage_root: Path) -> None:
+    analyzed_id = _create_diagnostic(client)
+    _analyze(client, analyzed_id)
+    other_id = client.post(
+        "/diagnostics",
+        json={"vehicle_id": client.get(f"/diagnostics/{analyzed_id}").json()["vehicle_id"], "reported_symptoms": "Otro"},
+    ).json()["id"]
+
+    assert _upload(client, analyzed_id, "motor.jpg", "image/jpeg").status_code == 409
+    assert _upload(client, other_id, "motor.jpg", "image/jpeg").status_code == 201
