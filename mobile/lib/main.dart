@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 
 import 'api_client.dart';
-import 'screens/create_customer_screen.dart';
+import 'screens/select_customer_screen.dart';
 
 void main() {
   runApp(const TallerAIApp());
@@ -94,7 +94,7 @@ class _ConnectionTestScreenState extends State<ConnectionTestScreen> {
                 onPressed: () {
                   Navigator.push(
                     context,
-                    MaterialPageRoute(builder: (_) => const CreateCustomerScreen()),
+                    MaterialPageRoute(builder: (_) => const SelectCustomerScreen()),
                   );
                 },
                 child: const Text('Crear nuevo diagnóstico'),
